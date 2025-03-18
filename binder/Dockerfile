@@ -10,8 +10,10 @@ COPY Project.toml Manifest.toml ./
 # Install dependencies
 RUN julia -e 'using Pkg; Pkg.instantiate()'
 
+
 # Install Pluto
-RUN julia -e 'using Pkg; Pkg.add("Pluto"); Pkg.precompile()'
+RUN julia -e 'using Pkg; Pkg.add("Pluto"); Pkg.add("IJulia"); Pkg.precompile()'
+
 
 # Copy the start script into the container
 COPY binder/start /usr/local/bin/start
