@@ -21,27 +21,37 @@ begin
 	using Plots
 	using PlutoUI
 	using LaTeXStrings
+	using Random
 end
 
 # ╔═╡ 59c8688c-0344-11f0-3ccf-b9a016a7ad93
 md"""
 # The Frobenius-Perron Operator
-#### A Magical Tool to Extract Information from Chaos"""
+#### A Magical Tool to Extract Information from Chaos
+By Mark Walth"""
 
 # ╔═╡ 963cd816-7d57-4ddf-97fb-c101316a4db4
-md"""In this notebook, we explore the theory and application of the *Frobenius-Perron Operator*. At a high level, this operator provides a way to extract statistical information about the behavior of a dynamical system. What makes it remarkable is that even when a system exhibits *chaotic* dynamics —where precise long-term prediction is impossible — the Frobenius-Perron operator can still reveal the system's long-term distribution of behaviors. Seemingly paradoxically, by shifting our focus from individual trajectories to the evolution of an ensemble of trajectories, chaotic systems become more tractable."""
+md"""In this notebook, we explore the theory and application of the *Frobenius-Perron Operator*. At a high level, this operator provides a way to extract statistical information about the behavior of a dynamical system. What makes it remarkable is that even when a system exhibits *chaotic* dynamics —where precise long-term prediction is impossible — the Frobenius-Perron operator can still reveal the system's long-term distribution of behaviors. Seemingly paradoxically, by shifting our focus from individual trajectories to the evolution of an ensemble of trajectories, chaotic systems become more tractable.
+
+Our treatment is based off of the book "Chaos, Fractals and Noise", by Lasota and Mackey."""
+
+# ╔═╡ 500c82bd-97e3-4299-8b4c-9eacf480df50
+md"""
+# Chapter 1: Introduction """
 
 # ╔═╡ d23f36d9-3bbf-446a-a5bf-20749a0ae2ab
-md"""Let's begin by looking at a few motivating examples. We will start with examples from the world of discrete dynamical systems to keep things simple."""
+md"""Let's begin by looking at a motivating example. We will start with examples from the world of discrete dynamical systems to keep things simple."""
 
 # ╔═╡ 1efc4bcf-8c17-4d63-ad15-562da0f2d689
-md"""Our first example is the **logistic map**, given by  
+md"""
+## The Logistic Map
+Our first example is the **logistic map**, given by  
 
-$f(x) = r x (1 - x)$
+$\ell(x) = r x (1 - x)$
 
 where $r \in [0,4]$. The system evolves according to the recurrence relation:  
 
-$x_{n+1} = f(x_n)$
+$x_{n+1} = \ell(x_n)$
 
 for $x \in [0,1]$.
 
@@ -54,57 +64,55 @@ The parameter $r$ governs the reproduction rate, determining how the population 
 
 
 # ╔═╡ a0168906-1183-41ac-b393-d43ce1babb8d
-md"""Here's a little exploration of how $x_{n+1}=f(x_n) behaves for varying values of $r$. Notice that when $r$ is small (less than 3), that the population always eventually tends towards some stable value. However, at $r=3$, a curious thing happens. The stable fixed point splits into two values! The population oscillates each generation, bouncing between two different values, in a 'boom-bust' cycle.
-
-But the story keeps getting stranger! Around $r=3.45$, the boom-bust cycle itself splits into a new cycle, now with a period of 4 generations. (The exact value of $r$ where this occurs is $1+\sqrt{6}.$ )
-
-As $r$ continues to increas, the trajectories get ever more complicated. At a critical value (which turns out to be roughly $r=3.5699$) the population become *aperiodic* - it just bounces all over the place from year to year!
-
-In fact, in this regime, the population is **chaotic**. There is no apparent pattern in the way the population changes from one year to the next.
-
+md"""Here's a little exploration of how $x_{n+1}=\ell(x_n)$ behaves for varying values of $r$. We start with an initial population of $x=.63$. For small values of $r$, the population eventually just settles down to some fixed value.
 
 
 """
 
 # ╔═╡ 6586ed69-9527-4e6a-bb3d-325adeb6b91b
-begin
-	@bind r Slider(0:0.02:4,show_value=true)
-end
+md""" $r$ value: $(@bind r Slider(0:0.02:4,show_value=true,default=0.98)) """
 
 # ╔═╡ da68725d-02c2-4d3a-a369-c0ea64e9c520
 let
 	
 
 	function trajplot1(f, iter, xinit)
-	x_traj = [xinit]
+		x_traj = [xinit]
+		
+		for _ in 1:iter
+			push!(x_traj, f(x_traj[end]))
+		end
 	
-	for _ in 1:iter
-		push!(x_traj, f(x_traj[end]))
-	end
-
-		
-	  scatter(1:iter+1, x_traj, 
-        label="Trajectory from x₀ = $xinit",  marker_z=x_traj, color=:viridis,
-        marker=:circle, lw=2,
-        legend=:outerbottom)
-		
-		xlabel!("Generation")
-		ylabel!("Population")
-		ylims!(0,1)
+			
+		  scatter(1:iter+1, x_traj, 
+	        label="Trajectory from x₀ = $xinit",  marker_z=x_traj, color=:rainbow,
+	        marker=:circle, lw=2,
+	        legend=false,colorbar = false)
+			
+			xlabel!("Generation")
+			ylabel!("Population")
+			ylims!(0,1)
 	end
 
 	f(x) = r*x*(1-x)
-	trajplot1(f,80,.2)
+	trajplot1(f,80,.64)
 	title!(L"Dynamics of $%$r \thinspace x (1-x)$")
 end
 
 # ╔═╡ 2e9d3b01-4996-4ccc-916c-f25e471d5f70
-md"""(You may notice that for certain parameter values, namely $r=3.74$ and $r=3.84$, the population is again periodic, with periods 6 and 3 respectively. These are known as 'windows of stability' amongst the chaos.)"""
+md"""However, at $r=3$, a curious thing happens. The stable fixed point splits into two values! The population oscillates each generation, bouncing between two different values, in a 'boom-bust' cycle.
+
+But the story keeps getting stranger! Around $r=3.45$, the boom-bust cycle itself splits into a new cycle, now with a period of 4 generations. (The exact value of $r$ where this occurs is $1+\sqrt{6}.$ )
+
+As $r$ continues to increas, the trajectories get ever more complicated. At a critical value (which turns out to be roughly $r=3.5699$) the population become *aperiodic* - it just bounces all over the place from year to year!
+
+In fact, in this regime, the population is **chaotic**. There is no apparent pattern in the way the population changes from one year to the next.
+(You may notice that for certain parameter values, namely $r=3.74$ and $r=3.84$, the population is again periodic, with periods 6 and 3 respectively. These are known as 'windows of stability' amongst the chaos.)"""
 
 # ╔═╡ 7f638033-c43b-4cdc-b836-965622f3f9a7
 md"""A complete discussion of the dynamics of the logistic map would take us too far away from our main point, but its a beautiful story. We refer the reader to [Strogatz - Nonlinear Dynamics, Ch: 10] for further details.
 
-For our purposes, the most important feature of the logistic map is its *sensitive dependence on initial conditions'. In the chaotic regime, if two different trajectories start off very very close to each other, they will eventually diverge.
+For our purposes, the most important feature of the logistic map is its *sensitive dependence on initial conditions*. In the chaotic regime, if two different trajectories start off very very close to each other, they will eventually diverge.
 In the below demonstration, we take two initial conditions which are with $0.0001 of each other. Their trajectories look similar for the first 11 generations or so, but then they get totally scrambled and soon bear no resemblance to each other."""
 
 # ╔═╡ a163069c-0167-4795-86fe-f4922ca21599
@@ -154,12 +162,436 @@ end
 # ╔═╡ 7ccb62c1-c20b-4ee1-b7cf-293bda68ff4f
 md"""If we are scientists studying such a chaotic system, this seems to give us no chance at all of being able to make predictions about how the system will behave! A measurement error of $0.05\%$ is enough to lead to totally different outcomes!"""
 
+# ╔═╡ 3372ef09-7d14-4119-84e3-ea8cf1f2bef4
+begin
+	function histplot(dist,map,iter,hist,numpoints)
+		#Plots histogram of where points are after many iterations of map
+		
+		#dist = choice of random initial distribution
+		#map = function, map to iterate
+		#iter = int, number of iterates of map
+		#hist = boole, whether or not to show histogram
+		#numpoints = int, number of initial points
+
+		#Generate 1000 random initial conditions, sampled from different distributions
+		if dist == "Uniform"
+			data = rand(numpoints)
+		elseif dist == "Normal"
+			data = (randn(numpoints)/8 .+ .5) .%1
+		elseif dist == "Exponential"
+			data = (randexp(numpoints)/8) .%1
+		end
+		
+		data = sort(data) 
+		
+		local color_data = (data .- minimum(data))./maximum(data.-minimum(data)) #Scale data so smallest is 0 and largest is 1, for colors.
+	
+		function fn(x,iter)
+			#compute nth iterate of map
+			for _ in 1:iter
+				x = map(x)
+			end
+			x
+		end
+		
+		
+		local mapped_data = fn.(data,iter) #Apply n^th iterate of map to data.
+
+		
+			# Define the bin edges from 0 to 1 with a bin size of 0.1
+		if hist
+			bins = 0:0.02:1
+			
+			# Plot the histogram
+			
+			histogram(mapped_data, bins=bins, xlabel="Value", ylabel="Frequency", title="Histogram with Bin Size 0.1",fillalpha=0.6,normalize=:probability )
+
+			#Plot scatter data
+			scatter!(mapped_data, 0.001*ones(length(data)),  marker_z=color_data, 	color=:gist_rainbow,
+			marker=:circle, lw=2,
+			legend=false,colorbar=false)
+			ylims!(0,0.2)
+			plot!()
+		else
+			#Just plot scatter data
+			local x = mapped_data
+			local y =  .2*ones(length(data))
+			scatter(x, y,  marker_z=color_data, 	color=:gist_rainbow,
+			marker=:circle, lw=2,
+			legend=false,colorbar=false, ylabel="",showaxis=false)
+			ylims!(0.1,0.3)
+		end
+		
+		title!("Distribution After $iter Iterations")
+		
+	end
+		nothing
+end
+
+# ╔═╡ ad2b2535-da73-4915-9b47-1cc9cdea8135
+md"""
+### Ensemble Behavior of the Logistic Map
+Now we are going to make a somewhat surprising move. Rather than just trying to understand the behavior of a *single* trajectory of the logistic map, let's study what happens to a *large ensemble* of trajectories. It seems at first like this would make the problem much harder - after all, why should studying 1000 trajectories be easier than studying 1 trajectory??
+"""
+
+# ╔═╡ 65275c28-d75f-4a73-8b83-064ddf745d9b
+md"""To begin, take a look what happens if we take 100 uniformly randomly distributed points, and apply the map $\ell(x)= 4x(1-x)$ to them repeatedly. Points are color coded by their starting position. """
+
+
+# ╔═╡ 101c4908-6650-4a28-9356-8e7c5726f4db
+md""" Number of iterations: $(@bind iter2 Slider(0:1:15, show_value=true,default=0)) """
+
+# ╔═╡ 1eb9afc5-4473-4fc1-adcc-060d098bebca
+begin
+	logist(x) = 4*x*(1-x) #globally define this logistic map
+	
+	histplot("Uniform",logist,iter2,false,100)	
+end
+
+# ╔═╡ 7f5d8326-ee8a-49fd-974d-e33bbfeb53f4
+md"""Clearly, after just a few iterations, the points get all scrambled. To really see what's going on, let's get a sense of where the points are ending up after each iteration. To that end, let's plot a histogram of how many points are in each interval after each iteration. To make the effect stronger, we'll use 1000 points this time. """
+
+# ╔═╡ 07d1a2d2-eb8a-4a04-b72c-878d2c8fb280
+md""" Number of iterations: $(@bind iter3 Slider(0:1:15, show_value=true,default=0)) """
+
+# ╔═╡ da696dac-f5ed-4bd9-9e91-73cd2553a6c6
+histplot("Uniform",logist,iter3,true,10000)
+
+# ╔═╡ 57833f1f-6f00-472c-9d74-0eacf4632f90
+md""" How intersesting! After about 4 iterations, the points seems to converge to some U-shaped distribution, and then stay there! Note that the individual points are still moving all over the place each iteration, but the *distribution* appears (more or less) fixed!"""
+
+# ╔═╡ 88d0c701-1f50-421d-8d3e-c66e15b2a08c
+md"""What's amazing is that this fixed distribution seems to be independent of the initial choice of distribution. Below you can play around with what happens if you change the initial distribution of points. Eventually, they all lead to the same final **stationary** distribution."""
+
+# ╔═╡ 1df0c283-082b-4eb8-bd05-ac1c59928cf1
+md""" Initial Distribution: $(@bind initdist Select(["Uniform", "Normal", "Exponential"],default = "Normal")) """
+
+
+# ╔═╡ d875cc70-5ae3-41f9-b7fa-2672f379cdb1
+md""" Number of iterations: $(@bind iter4 Slider(0:1:15, show_value=true,default=0)) """
+
+# ╔═╡ 99338ef3-9f5f-4e0a-8565-07323a646328
+md"""
+### Histogram when the initial distribution is $initdist"""
+
+# ╔═╡ 5585f38a-77b2-49fb-a334-725ea1b80400
+histplot(initdist,logist,iter4,true,1000)
+
+# ╔═╡ 7d47fc7b-1853-4b13-8b7c-464b37af7908
+md"""Now we are lead to the following natural 
+#### Question: What is that stationary distribution?
+Answering this question will lead us to our goal, the **Frobenius-Perron Operator**.
+
+
+As a first step towards answering this question, we can ask:
+Given an initial distribution of data, what will be the distribution after applying our map $f$ one time?"""
+
+# ╔═╡ 119ad2d9-49bd-49ea-b1fc-1d38d8c7a2fb
+md"""
+### Derivation of Frobenius-Perron Operator
+To begin to answer this question, we need to introduce some background concepts. We'll work in a more general setting, and then get back to our example of the logistic map.
+
+Let's start by fixing some map, which we'll call $S$, which takes $[0,1]$ onto itself, $S:[0,1]\to[0,1]$. Given some large initial collection of states, $x_1^0,x_2^0,\ldots,x_N^0$, we'd like to understand something about the distribution of states after applying $S$. Define 
+
+$x_1^1=S(x_1^0), x_2^1 = S(x_2^0),\ldots, x_N^1 = S(x_N^0).$
+
+In what follows, it is useful to define the notion of a *characteristic function*. Let $\Delta$ be some sub-interval of $[0,1]$. We'll define the characteristic function $1_\Delta$ by 
+
+$1_\Delta (x) = \begin{cases}
+1, & \text{if } x \in \Delta, \\
+0, & \text{if } x \not \in \Delta.
+\end{cases}$
+
+Now, to talk about the distribution of our states, we're going to borrow the idea of a *density function* from probabibilty theory. Loosely speaking, a density function tells you what percentage of your values lie in a given interval. Symbolically, we can say this as follows, though this definition is still rough. A density function $f_0$ for the initial states $x_1^0, \ldots, x_N^0$ is one such that for any interval $\Delta$,
+
+$\int_\Delta f_0(u)du\approx \frac{1}{N}\sum_{j=1}^N 1_\Delta(x_j^0).$
+That is, if we integrate our density over an interval, its about equal to what we'd get if we count what percentage of our data points are in that interval.
+
+Now, what we would like to understand is, given an initial density $f_0$ for the initial state $x_1^0,\ldots,x_N^0$, can we find a density $f_1$ for the state one step later, after applying our map $S$ to all the data? 
+Such a density would satisfy
+
+$\begin{align*}
+\int_\Delta f_1(u)du &\approx \frac{1}{N}\sum_{j=1}^N 1_\Delta(x_j^1) \\
+&= \frac{1}{N}\sum_{j=1}^N 1_\Delta(S(x_j^0))
+\end{align*}.$
+
+Now, we make the key observation. The indicator functions that appear in the equation above provide us the way forward. When is the indicator $1_\Delta(S(x_j^0))=1$? In other words, when is $S(x_j)\in \Delta$? This happens precisely when $x_j\in S^{-1}(\Delta)$, where by $S^{-1}$ we mean the preimage. This observation gives us the key relationship
+
+$1_\Delta (S(x)) = 1_{S^{-1}(\Delta)}(x).$
+
+
+This may all feel a bit technical. Bear with it, we're almost there.
+
+Putting the pieces together, we want our new density function $f_1$ to satisfy
+
+$\int_\Delta f_1(u)du = \frac{1}{N}\sum_{j=1}^N 1_{S^{-1}(\Delta)}(x_j^0),$
+but notice that this right hand side is just exactly equal to $\int_{S^{-1}(\Delta)} f_0 (u) du$! Hence, we have arrived at how our densities will evolve as a result of the dynamics $S$: 
+
+$\int_\Delta f_1(u)du=\int_{S^{-1}(\Delta)} f_0 (u) du.$
+
+To make this observation actionable, we make the concrete choice $\Delta=[a,x]$. Then the above equation becomes 
+
+$\int_a^x f_1(u)du=\int_{S^{-1}([a,x])} f_0 (u) du$.
+Finally, differentiating both sides with respect to $x$, we obtain
+
+$f_1(x) = \frac{d}{dx}\int_{S^{-1}([a,x])} f_0 (u) du$.
+
+This inspires the following definition. Given a density of states $f$ and some dynamics $S$, we define 
+
+$\begin{equation} Pf(x) = \frac{d}{dx}\int_{S^{-1}([a,x])} f_0 (u) du.\end{equation}$ $P$ is called the **Frobenius-Perron operator.** It allows us to compute how the distribution of states will evolve as we continue to apply our dynamics: if we start with an initial distribution $f_0$, then after $n$ iterations, our distribution will be given by $P^n f_0$.
+"""
+
+# ╔═╡ cad4fa8b-53da-442a-9029-37c0b5927760
+md"""
+#### Frobenius-Perron and The Logistic Map
+What's amazing is that in our logistic map example, we can actually explicitly compute the Frobenius-Perron operator. 
+As before, we'll let $\ell(x) = 4x(1-x)$. To get an explicit form for $Pf$ with this map, we will need to consider what is $\ell ^{-1}([a,y])$. For simplicity, we'll set $a=0$. A picture is helpful.
+"""
+
+# ╔═╡ e8925538-1431-4585-8ce8-88449be662c3
+md"""value of $y:$ $(@bind demox Slider(0:.01:1,show_value=true,default=.25))"""
+
+# ╔═╡ ad0faf68-5c62-424c-b05b-32b2a096406f
+let
+	xs = 0:.01:1
+	ys = logist.(xs)
+	enpt1 = 1/2 - 1/2 *sqrt(1-demox)
+	enpt2 =1/2 + 1/2 *sqrt(1-demox)
+	plot(xs,ys,legend=false,lw=3,ylabel=L"y",xlabel=L"\ell^{-1}([0,y])")
+	title!(L"\ell(x)")
+	plot!([-0.0,-0.0],[0,demox])
+	plot!([0,enpt1],[demox,demox],ls=:dash,lc=:red)
+	plot!([0,enpt2],[demox,demox],ls=:dash,lc=:red)
+	plot!([enpt1,enpt1],[demox,0],ls=:dash,lc=:black)
+	plot!([enpt2,enpt2],[demox,0],ls=:dash,lc=:black)
+	
+	rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
+
+	
+	plot!(rectangle(enpt1,demox,0,0), opacity=.5,color=:purple)
+	plot!(rectangle(enpt1,demox,enpt2,0), opacity=.5,color=:purple)
+
+end
+
+# ╔═╡ 1203ff7e-d698-4deb-88bd-f22c95457f22
+md""" 
+The picture above shows that for a given $y$, the inverse image $\ell^{-1}([0,y])$ will generally have two components, visualized as where the purple rectangles touch the $x$ axis. Knowing this, it's not hard to compute that $\ell^{-1}([0,y])=[0,\frac{1}{2}-\frac{1}{2}\sqrt{1-y}]\cup[\frac{1}{2}+\frac{1}{2}\sqrt{1-y},1]$.
+
+Therefore, combining this with the definition for $Pf(x)$, we have that 
+
+$\begin{align}Pf(x)&=\frac{d}{dx}\int_0 ^{1/2-1/2\sqrt{1-x}}f(u)du+\frac{d}{dx}\int_{1/2+1/2\sqrt{1-x}}^1 f(u)du \\
+&=\frac{1}{4 \sqrt{1-x}}\left ( f\left(\frac{1}{2}-\frac{1}{2}\sqrt{1-x}\right) + f\left(\frac{1}{2}+\frac{1}{2}\sqrt{1-x}\right)\right )\end{align}.$
+
+We now have an *explicit formula* for how the distribution of states will evolve with our logistic function dynamics."""
+
+# ╔═╡ db3748b7-ecd4-4997-b155-6fabcdfc0cee
+md"""Let's do a reality check. Suppose we start off with a uniform distribution, $f_0(x)=1$. Then it's not too hard to calculate that 
+
+$\begin{align}Pf_0(x)&=\frac{1}{2\sqrt{1-x}}\\
+P^2f_0(x)&=\frac{\sqrt{2}}{8\sqrt{1-x}}\left(\frac{1}{\sqrt{1+{\sqrt{1-x}}}}+\frac{1}{\sqrt{1-{\sqrt{1-x}}}}\right)\end{align}$ but computing anything beyond that by hand is clearly going to be a hassle!
+
+Before we go any further, let's just see how our calculations align with the simulations we ran earlier.
+"""
+
+# ╔═╡ 7a103731-8372-4a53-b751-738364110aaa
+begin
+	function histplot_with_FB(dist,map,iter,numpoints)
+		#Plots histogram of where points are after many iterations of map
+		
+		#dist = choice of random initial distribution
+		#map = function, map to iterate
+		#iter = int, number of iterates of map
+		#hist = boole, whether or not to show histogram
+		#numpoints = int, number of initial points
+
+		#Generate 1000 random initial conditions, sampled from different distributions
+		if dist == "Uniform"
+			data = rand(numpoints)
+		elseif dist == "Normal"
+			data = (randn(numpoints)/8 .+ .5) .%1
+		elseif dist == "Exponential"
+			data = (randexp(numpoints)/8) .%1
+		end
+		
+		data = sort(data) 
+		
+		local color_data = (data .- minimum(data))./maximum(data.-minimum(data)) #Scale data so smallest is 0 and largest is 1, for colors.
+	
+		function fn(x,iter)
+			#compute nth iterate of map
+			for _ in 1:iter
+				x = map(x)
+			end
+			x
+		end
+		
+		
+		local mapped_data = fn.(data,iter) #Apply n^th iterate of map to data.
+
+		
+			# Define the bin edges from 0 to 1 with a bin size of 0.1
+			bins = 0:0.02:1
+			
+			# Plot the histogram
+			
+			histogram(mapped_data, bins=bins, xlabel="Value", ylabel="Frequency", title="Histogram with Bin Size 0.1",fillalpha=0.6,normalize=:probability )
+
+			#Plot scatter data
+			scatter!(mapped_data, 0.001*ones(length(data)),  marker_z=color_data, 	color=:gist_rainbow,
+			marker=:circle, lw=2,
+			legend=false,colorbar=false)
+			ylims!(0,0.2)
+			plot!()
+			
+
+			#Define FB operator
+			P(f) = x -> (1 / (4 * sqrt(1 - x))) * (f(1/2 - 1/2 * sqrt(1 - x)) + f(1/2 + 1/2* sqrt(1 - x)))
+
+			#Initial distr. (divide by fifty because of number of bins)
+			
+			if dist == "Uniform"
+				one(x) = 1/50
+				f0 = one
+			elseif dist == "Normal"
+				npdf(x) = (1 / (1/8 * sqrt(2π))) * exp(-((x - .5)^2) / (2*(1/8)^2))/50
+				f0 = npdf
+			elseif dist== "Exponential"
+				exp_pdf(y) = 8 * exp(-8 * y)/50
+				f0 = exp_pdf
+			end
+
+			#Compute P^n(f)
+			for _ in 1:(iter)
+				f0 = P(f0)
+			end
+			
+			xs = 0:.001:1
+			ys = f0.(xs)
+
+			#Plot FB on top of hist
+			plot!(xs,ys,lw=4,legend=false)
+			ylims!(0,0.4)
+			title!(L"P^{%$iter}f(x)" * " vs. Distribution After $iter Iterations")
+	end
+		nothing
+end
+
+# ╔═╡ ecc05aa0-4fdd-43ad-b5bc-88d053fc5af7
+md""" Initial Distribution: $(@bind initdist2 Select(["Uniform", "Normal", "Exponential"],default = "Uniform")) """
+
+# ╔═╡ c5e2c6ad-f7d9-473b-be2c-4c7f41605ce9
+md"""Number of Iterations: $(@bind iter6 Slider(0:10))"""
+
+# ╔═╡ a06130ba-85a1-483b-ab37-ef62d9aad25e
+begin
+	histplot_with_FB(initdist2,logist,iter6,1000)
+end
+
+# ╔═╡ 6fcf7ffa-363a-4038-bc67-39f27897e9ab
+md"""The dark green line shows the calculated value of the distribution, using the F.P. operator we calculated earlier. Notice how well it lines up! Also, notice that no matter which initial distribution of the data we use, the calculated value always seems to go to the same U shaped curve! Amazing! """
+
+# ╔═╡ 2d80f543-af01-4723-b379-92326627132f
+md""" 
+### Recap
+So far, we have computed an operator $P$ which tells you how a large ensemble of states will evolve under a given dynamics. This means that **even for chaotic systems** we have a means of extracting long term statistical information about how the system will behave.
+
+##### Question: But what *is* that stationary distribution??
+Ah, you've notice that we still haven't answered the earlier question! Very astute. Well it turns out its hard. 
+
+Clearly, a stationary distribution $f^*$ must satisfy $Pf^* = f^*$, as this is what it means to be stationary. However, if you write down what that means in our case, you'll see it's not so obvious how to find $f^*$. It was Jon von Neumann who first solved this problem:
+
+##### Answer: $f^*(x)=\frac{1}{\pi \sqrt{x(1-x)}}$
+
+##### Exercise: (Easy) 
+Verify that the above $f^*(x)$ is indeed stationary.
+##### Exercise: (Much harder) 
+Show that $P^n f_0 (x)\to f^*$ if you start with the initial distribution $f_0(x)=1$.
+"""
+
+# ╔═╡ f6d5d46d-24d8-492d-b831-382a4e6ebafe
+md"""
+# Chapter 2: Extensions
+
+In this chapter, we will touch on a few extensions of what we have discussed so far. The Frobenius-Perron operator can be defined in much greater generality than what we did in Chapter 1. Here, we'll sketch some of those extensions, and offer a few applications in some more complicated systems.
+
+### Extension 1: Higher Dimensional Systems
+It should be no surprise that the Frobenius-Perron Operator can be defined in higher dimensional dynamical systems.
+
+Let $S:\mathbb{R}^n\to \mathbb{R}^n$ be a differentiable map with differentiable inverse (i.e. a diffeomorphism). Again, we are interested in how an initial distribution of states $f$ will evolve with each application of the dynamics $S$. We skip the derivation this time. It turns out we can define the F.P. operator with respect to the dynamics $S$ by
+
+$P_S f(x) = f(S^{-1}(x)) J^{-1}(x)$
+
+where $J^{-1}(x)=\left|\frac{dS^{-1}(x)}{dx} \right|$ is the determinant of the Jacobian of $S^{-1}$. This again makes it feasible to actually explicitlly compute $P_S$ for certain mappings $S$.
+
+If $S$ does not have a differentiable inverse, you can still write down $P_S f$, but it's more combersome. For example, if $S:\mathbb{R}^2\to\mathbb{R}^2$, then 
+
+$P_S f(x,y)=\frac{\partial ^2}{\partial x\partial y}\int \int _{S^{-1}([a,x]\times [c,y])}f(s,t)\text{ ds}\text{ }\text{dt}$
+
+"""
+
+# ╔═╡ 66ba2ee7-adf4-42d7-9b81-b4709427f025
+md"""
+Let's do some examples.
+We begin with the so called "Baker's Map,"
+
+$B:\mathbb{R}^2\to \mathbb{R}^2$
+$B(x, y) =
+\begin{cases}
+(2x,\frac{y}{2}), & \text{if } x < 0.5 \\
+(2x - 1,\frac{y}{2}+\frac{1}{2}), & \text{if } x \geq 0.5.
+\end{cases}$
+The Baker's Map is so called because it takes the unit square $[0,1]\times[0,1]$, stretches it, and folds it back onto itself, much like a baker kneeding a piece of dough.
+"""
+
+# ╔═╡ d8f1d248-30f6-4e99-aabc-0d4b36983877
+begin
+	function baker(xy) 
+		#Define the Baker map from R^2->R^2. Wants xy = 2ple
+		x = xy[1]
+		y=xy[2]
+		if x<= .5
+			[2*x,y/2]
+		else
+			[2*x-1,y/2+1/2]
+		end
+	end
+
+	
+	function cat(xy)
+		#Define the cat map from R^2->R^2. Wants xy = 2ple
+		x = xy[1]
+		y=xy[2]
+		[3*x+1,x+3*y] .%1
+	end
+
+	function erg(xy)
+		#Define the erg function from R^2->R^2. Wants xy = 2ple
+		x = xy[1]
+		y=xy[2]
+		[sqrt(2)+x,sqrt(3)+y] .%1
+	end
+
+	function itern(map,xy,n)
+		#Takes a map of 2 variables, map([x,y]), an initial condition xy = [x,y], and iterates it a whole number n times, returns map^n([x,y])
+		current = xy
+		for _ in 1:n
+			current = map(current)
+		end
+		current
+	end
+	
+end
+
+# ╔═╡ f39f2a9e-e0f9-456e-9b44-c06c91b065af
+
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
 LaTeXStrings = "~1.4.0"
@@ -173,7 +605,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.4"
 manifest_format = "2.0"
-project_hash = "25907d1c794a2c01c810551a1df10fc9a299451f"
+project_hash = "6af550bfb6a587190608c3cf13f04075f73a338e"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1336,6 +1768,7 @@ version = "1.4.1+1"
 # ╟─59c8688c-0344-11f0-3ccf-b9a016a7ad93
 # ╟─40677b1b-70ad-4cad-bf5b-deb084e4257e
 # ╟─963cd816-7d57-4ddf-97fb-c101316a4db4
+# ╟─500c82bd-97e3-4299-8b4c-9eacf480df50
 # ╟─d23f36d9-3bbf-446a-a5bf-20749a0ae2ab
 # ╟─1efc4bcf-8c17-4d63-ad15-562da0f2d689
 # ╟─a0168906-1183-41ac-b393-d43ce1babb8d
@@ -1347,5 +1780,36 @@ version = "1.4.1+1"
 # ╟─327ab60f-029d-44b9-b57e-906b76ac3f56
 # ╟─3a89f474-02b5-4a62-90a4-c437df739dfe
 # ╟─7ccb62c1-c20b-4ee1-b7cf-293bda68ff4f
+# ╟─3372ef09-7d14-4119-84e3-ea8cf1f2bef4
+# ╟─ad2b2535-da73-4915-9b47-1cc9cdea8135
+# ╟─65275c28-d75f-4a73-8b83-064ddf745d9b
+# ╟─101c4908-6650-4a28-9356-8e7c5726f4db
+# ╟─1eb9afc5-4473-4fc1-adcc-060d098bebca
+# ╟─7f5d8326-ee8a-49fd-974d-e33bbfeb53f4
+# ╟─07d1a2d2-eb8a-4a04-b72c-878d2c8fb280
+# ╠═da696dac-f5ed-4bd9-9e91-73cd2553a6c6
+# ╟─57833f1f-6f00-472c-9d74-0eacf4632f90
+# ╟─88d0c701-1f50-421d-8d3e-c66e15b2a08c
+# ╟─1df0c283-082b-4eb8-bd05-ac1c59928cf1
+# ╟─d875cc70-5ae3-41f9-b7fa-2672f379cdb1
+# ╟─99338ef3-9f5f-4e0a-8565-07323a646328
+# ╟─5585f38a-77b2-49fb-a334-725ea1b80400
+# ╟─7d47fc7b-1853-4b13-8b7c-464b37af7908
+# ╟─119ad2d9-49bd-49ea-b1fc-1d38d8c7a2fb
+# ╟─cad4fa8b-53da-442a-9029-37c0b5927760
+# ╟─e8925538-1431-4585-8ce8-88449be662c3
+# ╟─ad0faf68-5c62-424c-b05b-32b2a096406f
+# ╟─1203ff7e-d698-4deb-88bd-f22c95457f22
+# ╟─db3748b7-ecd4-4997-b155-6fabcdfc0cee
+# ╟─7a103731-8372-4a53-b751-738364110aaa
+# ╟─ecc05aa0-4fdd-43ad-b5bc-88d053fc5af7
+# ╟─c5e2c6ad-f7d9-473b-be2c-4c7f41605ce9
+# ╟─a06130ba-85a1-483b-ab37-ef62d9aad25e
+# ╟─6fcf7ffa-363a-4038-bc67-39f27897e9ab
+# ╟─2d80f543-af01-4723-b379-92326627132f
+# ╟─f6d5d46d-24d8-492d-b831-382a4e6ebafe
+# ╟─66ba2ee7-adf4-42d7-9b81-b4709427f025
+# ╟─d8f1d248-30f6-4e99-aabc-0d4b36983877
+# ╠═f39f2a9e-e0f9-456e-9b44-c06c91b065af
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
