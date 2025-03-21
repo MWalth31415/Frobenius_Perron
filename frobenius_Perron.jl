@@ -255,7 +255,7 @@ md"""Clearly, after just a few iterations, the points get all scrambled. To real
 md""" Number of iterations: $(@bind iter3 Slider(0:1:15, show_value=true,default=0)) """
 
 # ╔═╡ da696dac-f5ed-4bd9-9e91-73cd2553a6c6
-histplot("Uniform",logist,iter3,true,10000)
+histplot("Uniform",logist,iter3,true,1000)
 
 # ╔═╡ 57833f1f-6f00-472c-9d74-0eacf4632f90
 md""" How intersesting! After about 4 iterations, the points seems to converge to some U-shaped distribution, and then stay there! Note that the individual points are still moving all over the place each iteration, but the *distribution* appears (more or less) fixed!"""
@@ -480,7 +480,7 @@ end
 md""" Initial Distribution: $(@bind initdist2 Select(["Uniform", "Normal", "Exponential"],default = "Uniform")) """
 
 # ╔═╡ c5e2c6ad-f7d9-473b-be2c-4c7f41605ce9
-md"""Number of Iterations: $(@bind iter6 Slider(0:10))"""
+md"""Number of Iterations: $(@bind iter6 Slider(0:10,show_value=true))"""
 
 # ╔═╡ a06130ba-85a1-483b-ab37-ef62d9aad25e
 begin
@@ -532,7 +532,7 @@ $P_S f(x,y)=\frac{\partial ^2}{\partial x\partial y}\int \int _{S^{-1}([a,x]\tim
 # ╔═╡ 66ba2ee7-adf4-42d7-9b81-b4709427f025
 md"""
 Let's do some examples.
-We begin with the so called "Baker's Map,"
+We'll look at several examples. The first is so called the **"Baker's Map,"**
 
 $B:\mathbb{R}^2\to \mathbb{R}^2$
 $B(x, y) =
@@ -541,11 +541,26 @@ $B(x, y) =
 (2x - 1,\frac{y}{2}+\frac{1}{2}), & \text{if } x \geq 0.5.
 \end{cases}$
 The Baker's Map is so called because it takes the unit square $[0,1]\times[0,1]$, stretches it, and folds it back onto itself, much like a baker kneeding a piece of dough.
+Below we see a visualization of what the Baker map does to an initial collection of points. Notice how a distribution which is initially quite square gets spread out into thin strips, like a baker folding filo dough.
+
+Our next example is a variant on the famous [Arnold Cat Map](https://en.wikipedia.org/wiki/Arnold%27s_cat_map), given by
+
+$C(x,y) = (3x+y,x+3y) \mod 1.$
+
+While the end behavior of the Cat map and the Baker map look quite similar, looking at the first few iterates, it looks like somehow the Cat map is somehow *more* irregular than the Baker map.
+
+As a final example, we consider the map $\mbox{Erg}$ given by 
+
+$Erg(x,y) = (\sqrt{2}+x,\sqrt{3}+y).$ 
+
+Looking at several iterates of Erg, it appears to be the most "regular" of the three maps.
 """
 
 # ╔═╡ d8f1d248-30f6-4e99-aabc-0d4b36983877
 begin
-	function baker(xy) 
+#This lil module sets us up to do all of our plotting of maps of the plane
+	
+	function Baker(xy) 
 		#Define the Baker map from R^2->R^2. Wants xy = 2ple
 		x = xy[1]
 		y=xy[2]
@@ -557,33 +572,136 @@ begin
 	end
 
 	
-	function cat(xy)
+	function Cat(xy)
 		#Define the cat map from R^2->R^2. Wants xy = 2ple
 		x = xy[1]
 		y=xy[2]
-		[3*x+1,x+3*y] .%1
+		[3*x+y,x+3*y] .%1
 	end
 
-	function erg(xy)
+	function Erg(xy)
 		#Define the erg function from R^2->R^2. Wants xy = 2ple
 		x = xy[1]
 		y=xy[2]
 		[sqrt(2)+x,sqrt(3)+y] .%1
 	end
 
-	function itern(map,xy,n)
+	function itern(map,xy,iters)
 		#Takes a map of 2 variables, map([x,y]), an initial condition xy = [x,y], and iterates it a whole number n times, returns map^n([x,y])
 		current = xy
-		for _ in 1:n
+		for _ in 1:iters
 			current = map(current)
 		end
 		current
 	end
+
+	#Here we pick an initial distribution of points in the plane, color them and sort them. We do this once globally because the sort step/color step is slow.
+	
+			local distr = [.1 .3; .0 .4]
+			local a,b =distr[1,1], distr[1,2] #Extract bounds
+			local c,d = distr[2,1], distr[2,2]
+			
+			local X = (b-a)*rand(1000) .+ a  # Uniform samples for X
+			local Y = (d-c)*rand(1000) .+ c # Uniform samples for Y
+			
+			planepoints = [(X[i], Y[i]) for i in 1:1000] #Define points
+			local norm(xy) = xy[1]^2 +xy[2]^2
+			sort!(planepoints,by=norm) #sort by norm, in place
+			color_data = norm.(planepoints)
+
+	
+	function planeplot(map,iters)
+		#Outputs a plot of 1000 points, after iters applications of map.
+		#map is one of the above maps: cat, baker, erg
+		#iters = number of iterations
+
+
+			#Apply the map
+			points = itern.(map,planepoints,iters)
+
+		
+			#Extract coordinates		
+			xs, ys = getindex.(points, 1), getindex.(points, 2)
+
+			#Plot
+			scatter(xs,ys,marker_z=color_data, color=:gist_rainbow,
+			marker=:circle,
+			legend=false,colorbar=false)
+			ylims!(0,1)
+			xlims!(0,1)
+			title!("$map Map After $iters Iterations")
+	end
+nothing
 	
 end
 
-# ╔═╡ f39f2a9e-e0f9-456e-9b44-c06c91b065af
+# ╔═╡ e1d26cbd-c3dd-4f5f-83e8-de3611ac577a
+md"""Map: $(@bind planemap Select([Cat, Erg, Baker],default = "Baker") )"""
 
+# ╔═╡ f861b046-c3d4-4c5a-af4a-9e6f815c1a3c
+md"""Number of Iterations: $(@bind planeiter Slider(0:13, show_value=true)) """
+
+# ╔═╡ c1443cf3-620e-4559-bdb4-a9175804e6bc
+planeplot(planemap,planeiter)
+
+# ╔═╡ 705f477b-ac41-4195-939d-4190d551102d
+md"""Notice that after about 7 iterations, both the Baker and Cat maps  distribute the points fairly uniformly across the space. This is similar to what happened with the logistic map.
+
+(TO ADD: Demonstration of computing FB operator for Baker's Map)"""
+
+# ╔═╡ b8b5f26d-61c6-4844-98af-8b0acb9f4f5a
+md"""The different varieties of behavior can be fit into a general scheme. The map Erg is `ergodic,' the Baker map is `mixing,' and the Cat map - seemingly the most irregular - is `exact'.
+It turns out that
+
+$\text{Exact}\implies\text{Mixing}\implies\text{Ergodic}$
+
+so that in some sense, being `exact' is the strongest form of irregularity.
+
+The precise definitions are below:
+* **Ergodic:** A map $S$ is *ergodic* if 
+
+$S^{-1}(A)=A \iff \mu(A) \text{ or } \mu(X\backslash A)=0$
+Where $\mu$ is some measure on the phase space. Intuitively, this means that the phase space of a system can't be split the phase space into non-interacting regions. The map Erg is ergodic because it eventually sends every point in the phase space near to every other point in the phase space.
+
+* **Mixing:** $S$ is *mixing* if 
+$\lim_{n\to\infty}\mu(A\cap S^{-n}(B))=\mu(A)\mu(B)$ for all measurable $A,B$.
+Intuitively, this says that every part of every set `gets close' to every other set. This happens with the Baker's map.
+
+* **Exact:** $S$ is *exact* if 
+
+$\lim_{n\to\infty} \mu(S^n(A))=1$
+for all measurable $A$ with $\mu(A)>0.$  Intuitively, this says that every set blows up to fill up the whole phase space. This is what happens with the Cat map.
+"""
+
+# ╔═╡ 4763fd9f-0209-4165-ab78-65ed9e90bf8d
+md"""
+#### Levels of Irregularity and the Frobenius-Perron Operator
+We bring up the different levels of irregularity because they can also be completely characterized in terms of the convergence of the Frobenius operator. The following beautiful theorems capture this behavior. (We are not stating the theorems completely precisely, just enough to give an idea of the connection. For precise statements, see [Lasota and Maceky - Chaos Fractals and Noise].)
+##### Theorem
+1. The map $S$ is ergodic if and only if $\lim_{n\to \infty} \frac{1}{n} \sum_{k=0}^{n-1} P_S^f$ for all distributions $f$.
+2. The map $S$ is mixing if and only if ${P_S^n f}$ is weakly convergent to $1$ for all distributions $f.$
+3. The map $S$ is exact if and only if ${P_S^n f}$ is strongly convergent to $1$ for all distributions $f.$
+
+This hopefully gives the reader a taste of how the Frobenius-Perron operator connects with the deep subjects of ergodic theory and measure preserving dynamcis. We hope that this introduction piques your interest.
+
+
+"""
+
+# ╔═╡ 770936f5-c0de-4341-9181-8c1d161e5dd4
+md"""
+### Another Generalization: Continuous Time
+We note one further generalization of the ideas we've discussed so far. We have only discussed discrete time dynamical systems, but we note that it is completely possible to define a Frobenius-Perron operator in continuous time dynamical systems as well. We note it here for completeness.
+
+Let $\frac{dx}{dt} = F(x)$ and let $S_t(x_0)$ be the associated time $t$ flow map. Then there is an associated Frobenius-Perron operator $P_t : L^1 \to L^1$ for each time $t$ which satisfies 
+
+$\int_A P_t f(x)dx=\int_{S_t^{-1}(A)} f(x)dx$
+for all measurable sets $A$ and distributions $f$.
+"""
+
+# ╔═╡ 901c1a4e-d1a9-4d23-a3ef-bc40d4be5ad4
+md"""
+## Conclusion
+In this notebook, we have explored the (unintuitive!) idea that by studying large ensembles of states, we can sometimes extract more information than we can by studying trajectories of individual states. The nature of this information is inherently statistical and probabilistic rather than deterministic, but considering how limited our ability is to make predictions at all in the chaotic case, this represents a huge win. The technique which allows us to do this is the Frobenius-Perron operator. We introduced the operator in a few elementary cases, and hopefully showed enough extensions to pique the reader's curiosity to learn more. We cannot recommend the text "Chaos Fractals and Noise" by Lasota and Mackey highly enough for the reader who wants to dive deeper."""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1802,7 +1920,7 @@ version = "1.4.1+1"
 # ╟─1203ff7e-d698-4deb-88bd-f22c95457f22
 # ╟─db3748b7-ecd4-4997-b155-6fabcdfc0cee
 # ╟─7a103731-8372-4a53-b751-738364110aaa
-# ╟─ecc05aa0-4fdd-43ad-b5bc-88d053fc5af7
+# ╠═ecc05aa0-4fdd-43ad-b5bc-88d053fc5af7
 # ╟─c5e2c6ad-f7d9-473b-be2c-4c7f41605ce9
 # ╟─a06130ba-85a1-483b-ab37-ef62d9aad25e
 # ╟─6fcf7ffa-363a-4038-bc67-39f27897e9ab
@@ -1810,6 +1928,13 @@ version = "1.4.1+1"
 # ╟─f6d5d46d-24d8-492d-b831-382a4e6ebafe
 # ╟─66ba2ee7-adf4-42d7-9b81-b4709427f025
 # ╟─d8f1d248-30f6-4e99-aabc-0d4b36983877
-# ╠═f39f2a9e-e0f9-456e-9b44-c06c91b065af
+# ╟─e1d26cbd-c3dd-4f5f-83e8-de3611ac577a
+# ╟─f861b046-c3d4-4c5a-af4a-9e6f815c1a3c
+# ╟─c1443cf3-620e-4559-bdb4-a9175804e6bc
+# ╟─705f477b-ac41-4195-939d-4190d551102d
+# ╟─b8b5f26d-61c6-4844-98af-8b0acb9f4f5a
+# ╟─4763fd9f-0209-4165-ab78-65ed9e90bf8d
+# ╟─770936f5-c0de-4341-9181-8c1d161e5dd4
+# ╟─901c1a4e-d1a9-4d23-a3ef-bc40d4be5ad4
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
