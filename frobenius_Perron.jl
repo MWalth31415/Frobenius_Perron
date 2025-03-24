@@ -508,6 +508,54 @@ Verify that the above $f^*(x)$ is indeed stationary.
 Show that $P^n f_0 (x)\to f^*$ if you start with the initial distribution $f_0(x)=1$.
 """
 
+# ╔═╡ 66e6f771-8e89-4647-a5e6-1dda5d75f039
+md"""Just to give a nice visual proof that $f^*(x)$ is indeed the stationary distribution, take a look at the below demonstration"""
+
+# ╔═╡ 65b851b7-693d-40ea-b785-5c2b1e7af04f
+md""" Initial Distribution: $(@bind distr7 Select(["Uniform", "Normal", "Exponential"],default = "Uniform")) """
+
+# ╔═╡ 72c5c9a0-d1e1-46fc-9d09-d4d1ac00c09f
+md"""Number of Iterations: $(@bind iter7 Slider(0:10,show_value=true))"""
+
+# ╔═╡ 4d6cf332-aaf0-4e97-8a5f-71d53fb492c0
+let
+	function compare_plot(dist,iter)
+		
+		fstar(x) = 1/(pi*sqrt(x*(1-x)))
+		xs = 0:.01:1
+		ys1 = fstar.(xs)
+		plot(xs,ys1,lw=6,label=L"f^*(x)",legendposition=:outerbottom)
+
+		
+		P(f) = x -> (1 / (4 * sqrt(1 - x))) * (f(1/2 - 1/2 * sqrt(1 - x)) + f(1/2 + 1/2* sqrt(1 - x)))
+		
+		if dist == "Uniform"
+				one(x) = 1
+				f0 = one
+			elseif dist == "Normal"
+				npdf(x) = (1 / (1/8 * sqrt(2π))) * exp(-((x - .5)^2) / (2*(1/8)^2))
+				f0 = npdf
+			elseif dist== "Exponential"
+				exp_pdf(y) = 8 * exp(-8 * y)
+				f0 = exp_pdf
+			end
+
+		#Compute P^n(f)
+		for _ in 1:(iter)
+			f0 = P(f0)
+		end
+			
+			
+		ys2 = f0.(xs)
+		plot!(xs,ys2,label=L"P^{%$iter}f_0",lw=3)
+		title!(L"f^*"*" vs "*L"P^{%$iter}(f_0)"*" with "*L"f_0 \sim"* " Normal")
+		ylims!(0,5)
+	end
+	
+	compare_plot(distr7,iter7)
+		
+end
+
 # ╔═╡ f6d5d46d-24d8-492d-b831-382a4e6ebafe
 md"""
 # Chapter 2: Extensions
@@ -645,12 +693,11 @@ md"""Number of Iterations: $(@bind planeiter Slider(0:13, show_value=true)) """
 planeplot(planemap,planeiter)
 
 # ╔═╡ 705f477b-ac41-4195-939d-4190d551102d
-md"""Notice that after about 7 iterations, both the Baker and Cat maps  distribute the points fairly uniformly across the space. This is similar to what happened with the logistic map.
-
-(TO ADD: Demonstration of computing FB operator for Baker's Map)"""
+md"""Notice that after about 7 iterations, both the Baker's  distribute the points fairly uniformly across the space. For the Cat map, it only takes about 3 iterations. In both cases, this is similar to what happened with the logistic map, how eventually we saw that initial conditions get scattered throughout the space. This is an indication that Baker and Cat both have something like chaotic behavior going on. For now, we will call these behaviors "irregular."
+"""
 
 # ╔═╡ b8b5f26d-61c6-4844-98af-8b0acb9f4f5a
-md"""The different varieties of behavior can be fit into a general scheme. The map Erg is `ergodic,' the Baker map is `mixing,' and the Cat map - seemingly the most irregular - is `exact'.
+md"""The different varieties of behavior can be fit into a general scheme. The map Erg is "ergodic," the Baker map is "mixing," and the Cat map - seemingly the most irregular - is "exact."
 It turns out that
 
 $\text{Exact}\implies\text{Mixing}\implies\text{Ergodic}$
@@ -678,7 +725,7 @@ md"""
 #### Levels of Irregularity and the Frobenius-Perron Operator
 We bring up the different levels of irregularity because they can also be completely characterized in terms of the convergence of the Frobenius operator. The following beautiful theorems capture this behavior. (We are not stating the theorems completely precisely, just enough to give an idea of the connection. For precise statements, see [Lasota and Maceky - Chaos Fractals and Noise].)
 ##### Theorem
-1. The map $S$ is ergodic if and only if $\lim_{n\to \infty} \frac{1}{n} \sum_{k=0}^{n-1} P_S^f$ for all distributions $f$.
+1. The map $S$ is ergodic if and only if $\lim_{n\to \infty} \frac{1}{n} \sum_{k=0}^{n-1} P_S^f=1$ for all distributions $f$.
 2. The map $S$ is mixing if and only if ${P_S^n f}$ is weakly convergent to $1$ for all distributions $f.$
 3. The map $S$ is exact if and only if ${P_S^n f}$ is strongly convergent to $1$ for all distributions $f.$
 
@@ -686,6 +733,73 @@ This hopefully gives the reader a taste of how the Frobenius-Perron operator con
 
 
 """
+
+# ╔═╡ 46e52f0e-eec8-4ad9-ab85-79e4516257b0
+md"""
+### The Frobenius-Perron Operator of the Baker's Map
+
+To wrap up this section, let's actually compute the Frobenius Perron Operator for the Baker's Map.
+Using 
+
+$P_S f(x,y)= \frac{\partial^2}{\partial x \partial y } \int \int _{S^{-1}([a,x]\times [c,y])} f(s,t) \thinspace ds \thinspace dt$ we leave it as an exercise to show that for the Baker's map, 
+
+$P_B f(x,y) = 
+\begin{cases} 
+  f\left (\frac{1}{2} x,2y\right), & \text{if } y \leq \frac{1}{2} \\
+   f\left (\frac{1}{2}+\frac{1}{2} x,2y - 1\right), & \text{if } y > \frac{1}{2}
+\end{cases}$
+
+Let's take a look at what $P_B$ does to an initial density of states. We'll take $f_0$ to be the uniform distribution on the rectangle $[0.1,0.3]\times[0,0.4]$, which is how the initial states were distributed in the above animation. Let's see how the distribution changes under repeated applications of $P_B$.
+
+"""
+
+# ╔═╡ 5a687a81-1cc1-4b67-923f-edfe41c9b9be
+md"""Number of Iterations: $(@bind iters9 Slider(0:9, show_value=true,default=0)) """
+
+# ╔═╡ 5a78449f-8c59-4f9b-a1c1-154258554f38
+let
+	function pbakerplot(iters)
+		Pbaker(f) = (x, y) -> if y < 0.5
+			f(0.5 * x, 2 * y)
+		else
+			f(0.5 * x + 0.5, 2 * y - 1)
+		end
+
+		function uniform_rectangle_pdf(x, y)
+			x_min, x_max = 0.1, 0.3
+			y_min, y_max = 0.0, 0.4
+			area = (x_max - x_min) * (y_max - y_min)
+		
+			if x_min ≤ x ≤ x_max && y_min ≤ y ≤ y_max
+				return 1 / area
+			else
+				return 0.0
+			end
+		end
+
+		f0 = uniform_rectangle_pdf
+		for _ in 1:(iters)
+				f0 = Pbaker(f0)
+		end
+	
+		x_range = range(0.0, 1, length=250)
+		y_range = range(0.0, 1, length=250)
+		z = [f0(x, y) for x in x_range, y in y_range]
+
+		
+		
+		# Plot the surface
+		surface(x_range, y_range, z, xlabel="x", ylabel="y", zlabel="PDF", title=L"P_B^{%$iters9} (f_0)"*", where "*L"f_0"*" is Uniform on "*L"[0.1,0.3]\times[0,0.4]",colorbar=false,c=:plasma)
+		xlims!(0,1)
+		ylims!(0,1)
+	
+	end
+	pbakerplot(iters9)
+end
+
+
+# ╔═╡ 13e4dee1-9c4c-4241-84bb-0595580948e5
+md"""The visualization above helps to see that the uniform density is an invariant density for the Baker's map. This fact is easy to verify directly. This also jives with the theorem above, that for exact maps,  $\lim_{n\to \infty} \frac{1}{n} \sum_{k=0}^{n-1} P_S^f=1$ for all distributions $f$"""
 
 # ╔═╡ 770936f5-c0de-4341-9181-8c1d161e5dd4
 md"""
@@ -1905,7 +2019,7 @@ version = "1.4.1+1"
 # ╟─1eb9afc5-4473-4fc1-adcc-060d098bebca
 # ╟─7f5d8326-ee8a-49fd-974d-e33bbfeb53f4
 # ╟─07d1a2d2-eb8a-4a04-b72c-878d2c8fb280
-# ╠═da696dac-f5ed-4bd9-9e91-73cd2553a6c6
+# ╟─da696dac-f5ed-4bd9-9e91-73cd2553a6c6
 # ╟─57833f1f-6f00-472c-9d74-0eacf4632f90
 # ╟─88d0c701-1f50-421d-8d3e-c66e15b2a08c
 # ╟─1df0c283-082b-4eb8-bd05-ac1c59928cf1
@@ -1920,11 +2034,15 @@ version = "1.4.1+1"
 # ╟─1203ff7e-d698-4deb-88bd-f22c95457f22
 # ╟─db3748b7-ecd4-4997-b155-6fabcdfc0cee
 # ╟─7a103731-8372-4a53-b751-738364110aaa
-# ╠═ecc05aa0-4fdd-43ad-b5bc-88d053fc5af7
+# ╟─ecc05aa0-4fdd-43ad-b5bc-88d053fc5af7
 # ╟─c5e2c6ad-f7d9-473b-be2c-4c7f41605ce9
 # ╟─a06130ba-85a1-483b-ab37-ef62d9aad25e
 # ╟─6fcf7ffa-363a-4038-bc67-39f27897e9ab
 # ╟─2d80f543-af01-4723-b379-92326627132f
+# ╟─66e6f771-8e89-4647-a5e6-1dda5d75f039
+# ╟─65b851b7-693d-40ea-b785-5c2b1e7af04f
+# ╟─72c5c9a0-d1e1-46fc-9d09-d4d1ac00c09f
+# ╟─4d6cf332-aaf0-4e97-8a5f-71d53fb492c0
 # ╟─f6d5d46d-24d8-492d-b831-382a4e6ebafe
 # ╟─66ba2ee7-adf4-42d7-9b81-b4709427f025
 # ╟─d8f1d248-30f6-4e99-aabc-0d4b36983877
@@ -1934,6 +2052,10 @@ version = "1.4.1+1"
 # ╟─705f477b-ac41-4195-939d-4190d551102d
 # ╟─b8b5f26d-61c6-4844-98af-8b0acb9f4f5a
 # ╟─4763fd9f-0209-4165-ab78-65ed9e90bf8d
+# ╟─46e52f0e-eec8-4ad9-ab85-79e4516257b0
+# ╟─5a687a81-1cc1-4b67-923f-edfe41c9b9be
+# ╟─5a78449f-8c59-4f9b-a1c1-154258554f38
+# ╟─13e4dee1-9c4c-4241-84bb-0595580948e5
 # ╟─770936f5-c0de-4341-9181-8c1d161e5dd4
 # ╟─901c1a4e-d1a9-4d23-a3ef-bc40d4be5ad4
 # ╟─00000000-0000-0000-0000-000000000001
